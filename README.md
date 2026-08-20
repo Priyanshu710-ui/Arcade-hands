@@ -1,119 +1,131 @@
-# 🪐 ORRERY·LIVE — Hand-Controlled Solar System
+<div align="center">
 
-> **Your hand controls the planets.**
->
-> A browser-based interactive orrery where real-time hand gestures become the controls for a living 3D solar system.
+# 🪐 ORRERY
+### Control a 3D solar system with your hands.
 
-<p align="center">
-  <a href="https://priyanshu710-ui.github.io/Arcade-hands/">
-    <strong>🚀 OPEN THE LIVE EXPERIENCE</strong>
-  </a>
-</p>
+A browser-based interactive experience that combines **computer vision**, **hand tracking**, and **3D graphics**. Move your hand in front of your webcam and explore the solar system through natural gestures.
 
-<p align="center">
-  🖐️ Hand Tracking &nbsp;•&nbsp; 🌍 3D Solar System &nbsp;•&nbsp; 🤏 Pinch Interaction &nbsp;•&nbsp; ✨ WebGL
-</p>
+[![Live Demo](https://img.shields.io/badge/🚀_LIVE_DEMO-Open_ORRERY-F2A65A?style=for-the-badge)](https://priyanshu710-ui.github.io/Arcade-hands/)
+[![GitHub](https://img.shields.io/badge/GitHub-View_Source-12162A?style=for-the-badge&logo=github)](https://github.com/Priyanshu710-ui/Arcade-hands)
 
----
+<br>
 
-## 🟢 Live Demo
+### ✨ `HAND TRACKING` &nbsp;•&nbsp; 🌍 `3D SOLAR SYSTEM` &nbsp;•&nbsp; 🤏 `GESTURE CONTROL`
 
-### **[🚀 Launch ORRERY·LIVE](https://priyanshu710-ui.github.io/Arcade-hands/)**
-
-The project is deployed with **GitHub Pages** and runs directly in the browser.
-
-> 💡 **Best experience:** use a laptop/desktop with a webcam, good lighting, and a modern browser.
+</div>
 
 ---
 
-## 🌌 What is ORRERY·LIVE?
+## 🚀 Try It Live
 
-ORRERY·LIVE turns your webcam into a natural interface for a 3D solar system. Instead of clicking through a normal UI, you use your hand to explore the planets.
+<div align="center">
 
-The project uses **MediaPipe Hands** to track hand landmarks in the browser and **Three.js/WebGL** to render the interactive space scene. The current experience includes the Sun, all eight planets, orbital rings, a star field, focus mode, and gesture-driven controls. fileciteturn4file0L296-L299 fileciteturn4file0L356-L364 fileciteturn4file0L395-L403
+### [🪐 CLICK HERE TO OPEN THE LIVE EXPERIENCE](https://priyanshu710-ui.github.io/Arcade-hands/)
+
+**No installation required — open it in your browser, allow camera access, and start exploring.**
+
+</div>
+
+> 💡 **Best experience:** Desktop or laptop • Webcam enabled • Good lighting • Modern browser
+
+---
+
+## 🌌 What is ORRERY?
+
+**ORRERY** turns your webcam into a natural controller for an interactive 3D solar system.
+
+Instead of relying only on buttons and sliders, the project tracks your hand and translates gestures into actions inside the scene. The experience is rendered directly in the browser, making it easy to launch and experiment with.
+
+### 🎯 The idea
+
+> **What if your hand could become the controller for a miniature universe?**
 
 ---
 
 ## ✋ Gesture Controls
 
-| Gesture | Action |
-|---|---|
-| 🤏 **Pinch** | Grab and drag a planet |
-| ✋ **Tilt your hand** | Rotate the solar system |
-| ↕️ **Move hand up/down** | Zoom in and out |
-| 👉 **Point** | Cycle through focused planets |
-| ✊ **Fist** | Pause / resume planetary orbits |
-| 🖐️ **Open palm** | Reset the current view |
+| Gesture | What it does |
+|:---:|---|
+| 🤏 **Pinch** | Interact with / grab a planet |
+| ✋ **Hand movement / tilt** | Navigate and rotate the solar system |
+| ↕️ **Move up or down** | Zoom the view |
+| 👉 **Point** | Change the focused planet |
+| ✊ **Fist** | Pause or resume the orbital motion |
+| 🖐️ **Open palm** | Reset the view |
 
-These controls are built directly into the project's hand-processing logic, including pinch detection, finger-state detection, zoom mapping, rotation mapping, focus cycling, pause/resume, and reset behavior. fileciteturn4file0L611-L670
-
----
-
-## 🪐 Explore the Solar System
-
-The scene includes:
-
-- ☀️ Sun with a glowing visual halo
-- ☿ Mercury
-- ♀ Venus
-- 🌍 Earth
-- ♂ Mars
-- ♃ Jupiter
-- ♄ Saturn with rings
-- ♅ Uranus
-- ♆ Neptune
-- ✨ Dynamic star field
-- 🎯 Planet focus mode with facts
-
-Each planet has its own orbit, scale, color, speed, and short fact displayed when focused. fileciteturn4file0L395-L403
+The interface also includes a **mouse fallback**, so you can still explore the experience if camera tracking is unavailable.
 
 ---
 
-## 🎮 How to Use
+## 🪐 Inside the Experience
 
-1. Open the **[Live Demo](https://priyanshu710-ui.github.io/Arcade-hands/)**.
-2. Allow camera access.
-3. Keep your hand clearly visible and use good lighting.
-4. Move your hand to rotate and zoom the system.
-5. Pinch to grab a planet.
-6. Point to cycle focus.
-7. Make a fist to pause or resume the orbits.
-8. Open your palm to reset the view.
+Explore a stylized solar system featuring:
 
-The app includes a mouse fallback as well, so the experience can still be explored without camera tracking. fileciteturn4file0L793-L815
+- ☀️ A glowing **Sun**
+- ☿ **Mercury**
+- ♀ **Venus**
+- 🌍 **Earth**
+- ♂ **Mars**
+- ♃ **Jupiter**
+- ♄ **Saturn** with rings
+- ♅ **Uranus**
+- ♆ **Neptune**
+- ✨ A dynamic star field
+- 🛰️ Orbital paths and animated planetary motion
+- 🎯 Planet focus mode
+- ✋ Real-time webcam hand tracking
 
 ---
 
 ## ⚙️ Built With
 
-- **HTML5**
-- **CSS3**
-- **JavaScript**
-- **Three.js** — 3D rendering and scene management
-- **WebGL** — accelerated graphics
-- **MediaPipe Hands** — real-time hand landmark tracking
-- **GitHub Pages** — deployment
+| Technology | Purpose |
+|---|---|
+| **HTML5** | Application structure |
+| **CSS3** | Interface, HUD, animations and visual styling |
+| **JavaScript** | Interaction and application logic |
+| **Three.js** | 3D scene and solar system rendering |
+| **WebGL** | Browser-based graphics acceleration |
+| **MediaPipe Hands** | Real-time hand landmark tracking |
+| **GitHub Pages** | Live deployment |
 
-The project loads Three.js and MediaPipe Hands directly in the browser and initializes hand tracking from the webcam. fileciteturn4file0L287-L299 fileciteturn4file0L724-L785
+---
+
+## 🎮 How to Use
+
+```text
+1. Open the live demo
+        ↓
+2. Allow webcam access
+        ↓
+3. Keep your hand visible in good lighting
+        ↓
+4. Use gestures to explore the solar system ✨
+```
+
+### 🌐 Live Demo
+**https://priyanshu710-ui.github.io/Arcade-hands/**
 
 ---
 
 ## 🔐 Privacy
 
-Camera access is used for the live hand-tracking experience in the browser. The interface explicitly describes the tracking as local to the browser and states that the camera feed is not recorded or sent elsewhere. fileciteturn4file0L267-L282
+The webcam is used for the hand-tracking experience directly in the browser. The project is designed around live interaction rather than recording your camera feed.
 
 ---
 
-## 🚀 Run Locally
+## 💻 Run Locally
+
+Clone the repository:
 
 ```bash
 git clone https://github.com/Priyanshu710-ui/Arcade-hands.git
 cd Arcade-hands
 ```
 
-Then serve the project with a local development server such as **VS Code Live Server** and open the provided localhost URL.
+Then open the project with a local development server such as **VS Code Live Server**.
 
-> Camera access works best from `https://` or a local development server such as `http://localhost` / `http://127.0.0.1`.
+> Camera permissions generally work best on `localhost` or HTTPS.
 
 ---
 
@@ -122,24 +134,32 @@ Then serve the project with a local development server such as **VS Code Live Se
 ```text
 Arcade-hands/
 │
-├── index.html     # Interactive 3D solar system
-└── README.md      # Project documentation
+├── index.html      # Main interactive experience
+└── README.md       # Project documentation
 ```
 
 ---
 
-## ✨ Why this project?
+## 🌠 Why I Built This
 
-ORRERY·LIVE explores a simple idea:
+This project is an experiment at the intersection of:
 
-> **What if your hands were the controller for a digital universe?**
+**Computer Vision** × **Creative Coding** × **3D Graphics** × **Human–Computer Interaction**
 
-It combines computer vision, creative coding, 3D graphics, and human-computer interaction into one browser experience.
+The goal was simple: build something that feels less like a traditional website and more like an experience you can physically interact with.
 
 ---
 
-<p align="center">
-  <strong>Made with curiosity, code, and a little cosmic chaos. 🌌</strong>
-  <br><br>
-  ⭐ If you enjoy the project, consider giving the repository a star.
-</p>
+<div align="center">
+
+## ⭐ Like the project?
+
+If you enjoyed exploring the solar system, consider giving the repository a **star**.
+
+[![Star on GitHub](https://img.shields.io/badge/⭐_STAR_THE_PROJECT-GitHub-F2A65A?style=for-the-badge)](https://github.com/Priyanshu710-ui/Arcade-hands)
+
+<br>
+
+**Made with code, curiosity, and a little cosmic chaos. 🌌**
+
+</div>
