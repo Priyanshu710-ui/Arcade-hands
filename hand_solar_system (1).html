@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orrery — Hand-Controlled Solar System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#080A16;
+    --panel:#12162A;
+    --panel-line:rgba(160,170,220,0.14);
+    --gold:#F2A65A;
+    --gold-dim:rgba(242,166,90,0.35);
+    --cyan:#5EEAD4;
+    --violet:#A78BFA;
+    --ink:#E9E9F2;
+    --ink-dim:#8489A6;
+    --danger:#F26D6D;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:var(--void);
+    color:var(--ink);
+    font-family:'Space Grotesk', sans-serif;
+    overflow:hidden;
+    -webkit-user-select:none; user-select:none;
+  }
+  #app{ position:fixed; inset:0; }
+  #scene-canvas{ position:absolute; inset:0; display:block; width:100%; height:100%; }
+
+  /* ---------- Start overlay ---------- */
+  #start-overlay{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(ellipse at 50% 20%, rgba(242,166,90,0.08), transparent 60%),
+      var(--void);
+    z-index:50;
+    transition:opacity .6s ease, visibility .6s ease;
+  }
+  #start-overlay.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+  .start-card{
+    max-width:560px; width:88%;
+    padding:40px 36px 34px;
+    background:linear-gradient(180deg, rgba(18,22,42,0.9), rgba(12,14,28,0.9));
+    border:1px solid var(--panel-line);
+    border-radius:18px;
+    text-align:center;
+    box-shadow:0 30px 90px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--cyan); margin-bottom:14px;
+  }
+  .start-card h1{
+    font-size:30px; font-weight:700; margin:0 0 14px;
+    letter-spacing:-0.01em; line-height:1.15;
+    background:linear-gradient(180deg,#fff, #b9bedc);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .start-card p{
+    color:var(--ink-dim); font-size:14.5px; line-height:1.65; margin:0 0 26px;
+  }
+  .gesture-grid{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+    margin-bottom:28px;
+  }
+  .gesture-item{
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--panel-line);
+    border-radius:12px; padding:12px 6px;
+  }
+  .gesture-item .g-icon{ font-size:22px; margin-bottom:6px; }
+  .gesture-item .g-label{ font-size:10.5px; color:var(--ink-dim); line-height:1.4; font-family:'JetBrains Mono',monospace;}
+  #start-btn{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600; font-size:15px;
+    color:#0A0B14;
+    background:linear-gradient(180deg, #F7C08A, var(--gold));
+    border:none; border-radius:11px;
+    padding:14px 30px;
+    cursor:pointer;
+    box-shadow:0 10px 30px rgba(242,166,90,0.28);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  #start-btn:hover{ transform:translateY(-1px); box-shadow:0 14px 36px rgba(242,166,90,0.4); }
+  #start-btn:active{ transform:translateY(0); }
+  #start-note{
+    margin-top:14px; font-size:11.5px; color:var(--ink-dim); font-family:'JetBrains Mono',monospace;
+  }
+  #start-error{
+    margin-top:16px; font-size:12.5px; color:var(--danger); display:none;
+    font-family:'JetBrains Mono',monospace; line-height:1.5;
+  }
+  #mouse-fallback-btn{
+    margin-top:12px; background:none; border:1px solid var(--panel-line);
+    color:var(--ink-dim); font-family:'JetBrains Mono',monospace; font-size:11px;
+    padding:8px 14px; border-radius:8px; cursor:pointer; display:none;
+  }
+  #mouse-fallback-btn:hover{ color:var(--ink); border-color:rgba(160,170,220,0.35); }
+
+  /* ---------- Loading state ---------- */
+  #loading-line{
+    display:none; align-items:center; justify-content:center; gap:10px;
+    font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--cyan);
+    margin-top:6px;
+  }
+  .dot{ width:5px; height:5px; border-radius:50%; background:var(--cyan); animation:pulse 1.1s infinite ease-in-out; }
+  .dot:nth-child(2){ animation-delay:.15s; } .dot:nth-child(3){ animation-delay:.3s; }
+  @keyframes pulse{ 0%,80%,100%{ opacity:.25; transform:scale(.8);} 40%{ opacity:1; transform:scale(1);} }
+
+  /* ---------- HUD ---------- */
+  #hud{ position:absolute; inset:0; pointer-events:none; z-index:10; opacity:0; transition:opacity .8s ease; }
+  #hud.visible{ opacity:1; }
+
+  .hud-corner{
+    position:absolute;
+    font-family:'JetBrains Mono', monospace;
+  }
+  #title-block{ top:22px; left:26px; }
+  #title-block .brand{
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:17px; letter-spacing:.01em; color:var(--ink);
+  }
+  #title-block .brand span{ color:var(--gold); }
+  #title-block .sub{ font-size:10.5px; color:var(--ink-dim); letter-spacing:.14em; text-transform:uppercase; margin-top:3px;}
+
+  #status-block{ top:22px; right:26px; text-align:right; }
+  .status-pill{
+    display:inline-flex; align-items:center; gap:7px;
+    background:rgba(18,22,42,0.72); border:1px solid var(--panel-line);
+    padding:7px 12px; border-radius:999px; font-size:10.5px; letter-spacing:.06em;
+    backdrop-filter:blur(6px);
+  }
+  .status-dot{ width:7px; height:7px; border-radius:50%; background:var(--ink-dim); box-shadow:0 0 0 rgba(0,0,0,0); transition:all .25s ease;}
+  .status-dot.live{ background:var(--cyan); box-shadow:0 0 10px var(--cyan); }
+  .status-dot.lost{ background:var(--danger); }
+
+  #gesture-readout{
+    top:64px; right:26px; text-align:right;
+    background:rgba(18,22,42,0.72); border:1px solid var(--panel-line);
+    border-radius:12px; padding:12px 14px; min-width:190px;
+    backdrop-filter:blur(6px);
+  }
+  .readout-row{ display:flex; justify-content:space-between; gap:16px; font-size:10.5px; padding:3px 0; color:var(--ink-dim); }
+  .readout-row b{ color:var(--ink); font-weight:600; }
+  .readout-row.active b{ color:var(--gold); }
+
+  #cam-preview{
+    position:absolute; bottom:22px; right:26px;
+    width:168px; height:126px; border-radius:12px; overflow:hidden;
+    border:1px solid var(--panel-line);
+    box-shadow:0 14px 40px rgba(0,0,0,0.5);
+    background:#000;
+  }
+  #cam-video{ width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:block; opacity:0.9; }
+  #cam-overlay{ position:absolute; inset:0; width:100%; height:100%; }
+  #cam-label{
+    position:absolute; top:6px; left:8px; font-family:'JetBrains Mono',monospace;
+    font-size:9px; letter-spacing:.12em; color:var(--cyan); text-transform:uppercase;
+    text-shadow:0 1px 3px rgba(0,0,0,0.8);
+  }
+
+  #legend{
+    bottom:22px; left:26px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .legend-row{
+    display:flex; align-items:center; gap:9px;
+    font-size:11px; color:var(--ink-dim);
+    background:rgba(18,22,42,0.55); border:1px solid var(--panel-line);
+    padding:6px 11px; border-radius:9px; backdrop-filter:blur(6px);
+    transition:all .2s ease;
+  }
+  .legend-row.active{ color:var(--ink); border-color:var(--gold-dim); background:rgba(242,166,90,0.08); }
+  .legend-icon{ font-size:13px; width:16px; text-align:center; }
+
+  #focus-panel{
+    position:absolute; left:50%; top:26px; transform:translateX(-50%);
+    text-align:center; opacity:0; transition:opacity .4s ease, transform .4s ease;
+    pointer-events:none;
+  }
+  #focus-panel.show{ opacity:1; transform:translateX(-50%) translateY(4px); }
+  #focus-panel .fp-name{
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:22px;
+    color:var(--ink); text-shadow:0 2px 20px rgba(0,0,0,0.6);
+  }
+  #focus-panel .fp-fact{
+    font-family:'JetBrains Mono', monospace; font-size:11.5px; color:var(--ink-dim);
+    margin-top:4px; max-width:420px;
+  }
+
+  #toast{
+    position:absolute; left:50%; bottom:170px; transform:translateX(-50%) translateY(8px);
+    font-family:'JetBrains Mono', monospace; font-size:11.5px; letter-spacing:.05em;
+    color:var(--ink); background:rgba(18,22,42,0.85); border:1px solid var(--panel-line);
+    padding:8px 16px; border-radius:999px; opacity:0; transition:all .35s ease; white-space:nowrap;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  #reset-btn{
+    position:absolute; bottom:22px; left:50%; transform:translateX(-50%);
+    pointer-events:auto;
+    background:rgba(18,22,42,0.72); border:1px solid var(--panel-line);
+    color:var(--ink-dim); font-family:'JetBrains Mono',monospace; font-size:10.5px;
+    padding:8px 16px; border-radius:999px; cursor:pointer; letter-spacing:.05em;
+    backdrop-filter:blur(6px);
+    display:none;
+  }
+  #reset-btn:hover{ color:var(--ink); border-color:var(--gold-dim); }
+
+  @media (max-width: 720px){
+    #cam-preview{ width:112px; height:84px; }
+    #gesture-readout{ display:none; }
+    .gesture-grid{ grid-template-columns:repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene-canvas"></canvas>
+
+  <div id="hud">
+    <div class="hud-corner" id="title-block">
+      <div class="brand">ORRERY<span>·</span>LIVE</div>
+      <div class="sub">Hand-Controlled Solar System</div>
+    </div>
+
+    <div class="hud-corner" id="status-block">
+      <div class="status-pill"><div class="status-dot" id="status-dot"></div><span id="status-text">NO HAND</span></div>
+    </div>
+
+    <div class="hud-corner" id="gesture-readout">
+      <div class="readout-row"><span>ROTATION</span><b id="r-rot">0°</b></div>
+      <div class="readout-row"><span>ZOOM</span><b id="r-zoom">—</b></div>
+      <div class="readout-row"><span>PINCH</span><b id="r-pinch">0%</b></div>
+      <div class="readout-row" id="r-mode-row"><span>MODE</span><b id="r-mode">idle</b></div>
+    </div>
+
+    <div id="focus-panel">
+      <div class="fp-name" id="fp-name"></div>
+      <div class="fp-fact" id="fp-fact"></div>
+    </div>
+
+    <div class="hud-corner" id="legend">
+      <div class="legend-row" id="leg-pinch"><span class="legend-icon">🤏</span>Pinch — grab &amp; drag a planet</div>
+      <div class="legend-row" id="leg-rotate"><span class="legend-icon">✋</span>Tilt hand — rotate the system</div>
+      <div class="legend-row" id="leg-zoom"><span class="legend-icon">↕️</span>Move up/down — zoom</div>
+      <div class="legend-row" id="leg-point"><span class="legend-icon">👉</span>Point — cycle focused planet</div>
+      <div class="legend-row" id="leg-fist"><span class="legend-icon">✊</span>Fist — pause / resume orbits</div>
+      <div class="legend-row" id="leg-palm"><span class="legend-icon">🖐️</span>Open palm — reset view</div>
+    </div>
+
+    <div id="cam-preview">
+      <video id="cam-video" autoplay muted playsinline></video>
+      <canvas id="cam-overlay"></canvas>
+      <div id="cam-label">tracking</div>
+    </div>
+
+    <div id="toast"></div>
+    <button id="reset-btn">↺ mouse control active — click to re-enable camera</button>
+  </div>
+
+  <div id="start-overlay">
+    <div class="start-card">
+      <div class="eyebrow">Webcam Required</div>
+      <h1>Your hand controls the planets.</h1>
+      <p>This uses your camera to track hand landmarks locally in your browser — nothing is recorded or sent anywhere. Give it space and good light.</p>
+      <div class="gesture-grid">
+        <div class="gesture-item"><div class="g-icon">🤏</div><div class="g-label">PINCH<br/>grab a planet</div></div>
+        <div class="gesture-item"><div class="g-icon">✋</div><div class="g-label">TILT<br/>rotate system</div></div>
+        <div class="gesture-item"><div class="g-icon">↕️</div><div class="g-label">HEIGHT<br/>zoom in/out</div></div>
+        <div class="gesture-item"><div class="g-icon">👉</div><div class="g-label">POINT<br/>change planet</div></div>
+      </div>
+      <button id="start-btn">Enable Camera &amp; Begin</button>
+      <div id="loading-line"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span id="loading-text">Loading hand-tracking model…</span></div>
+      <div id="start-error"></div>
+      <button id="mouse-fallback-btn">Skip — use mouse instead</button>
+      <div id="start-note">No camera? Mouse fallback available below.</div>
+    </div>
+  </div>
+</div>
+
+<script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<!-- MediaPipe Hands (classic script, attaches window.Hands) -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+
+<script type="module">
+import * as THREE from "three";
+
+/* ============================================================
+   SCENE SETUP
+============================================================ */
+const canvas = document.getElementById('scene-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x03040a);
+scene.fog = new THREE.FogExp2(0x03040a, 0.0065);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 500);
+let camDistance = 26;
+let camPolar = 1.15; // vertical tilt
+camera.position.set(0, 9, 26);
+camera.lookAt(0,0,0);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Starfield
+function makeStarfield(count, radius){
+  const positions = new Float32Array(count*3);
+  const colors = new Float32Array(count*3);
+  const palette = [ [0.9,0.92,1], [0.7,0.8,1], [1,0.9,0.75], [1,1,1] ];
+  for(let i=0;i<count;i++){
+    const r = radius * (0.55 + Math.random()*0.45);
+    const theta = Math.random()*Math.PI*2;
+    const phi = Math.acos(2*Math.random()-1);
+    positions[i*3]   = r*Math.sin(phi)*Math.cos(theta);
+    positions[i*3+1] = r*Math.cos(phi);
+    positions[i*3+2] = r*Math.sin(phi)*Math.sin(theta);
+    const c = palette[(Math.random()*palette.length)|0];
+    colors[i*3]=c[0]; colors[i*3+1]=c[1]; colors[i*3+2]=c[2];
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+  const mat = new THREE.PointsMaterial({ size:0.55, vertexColors:true, transparent:true, opacity:0.85, sizeAttenuation:true });
+  return new THREE.Points(geo, mat);
+}
+scene.add(makeStarfield(2600, 180));
+
+// Lighting
+scene.add(new THREE.AmbientLight(0x445088, 0.55));
+const sunLight = new THREE.PointLight(0xffdca8, 6, 0, 1.4);
+sunLight.position.set(0,0,0);
+scene.add(sunLight);
+
+// Orbit group — this is what "rotates" with the hand
+const systemGroup = new THREE.Group();
+scene.add(systemGroup);
+
+// Sun
+const sunGeo = new THREE.SphereGeometry(2.1, 48, 48);
+const sunMat = new THREE.MeshBasicMaterial({ color:0xffb15e });
+const sun = new THREE.Mesh(sunGeo, sunMat);
+systemGroup.add(sun);
+const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: makeGlowTexture(), color:0xffb15e, transparent:true, opacity:0.9, depthWrite:false
+}));
+sunGlow.scale.set(11,11,1);
+systemGroup.add(sunGlow);
+
+function makeGlowTexture(){
+  const size=256;
+  const c=document.createElement('canvas'); c.width=c.height=size;
+  const ctx=c.getContext('2d');
+  const g=ctx.createRadialGradient(size/2,size/2,0,size/2,size/2,size/2);
+  g.addColorStop(0,'rgba(255,255,255,0.9)');
+  g.addColorStop(0.25,'rgba(255,190,120,0.55)');
+  g.addColorStop(1,'rgba(255,190,120,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,size,size);
+  return new THREE.CanvasTexture(c);
+}
+
+// Orbit ring visuals
+function makeOrbitRing(radius){
+  const geo = new THREE.RingGeometry(radius-0.02, radius+0.02, 128);
+  const mat = new THREE.MeshBasicMaterial({ color:0x5a6188, side:THREE.DoubleSide, transparent:true, opacity:0.28 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = Math.PI/2;
+  return mesh;
+}
+
+/* ============================================================
+   PLANETS
+============================================================ */
+const PLANET_DATA = [
+  { name:'Mercury', color:0xB7ADA3, radius:0.24, orbit:4.4,  speed:1.9,  fact:'Fastest planet — one year here lasts just 88 Earth days.' },
+  { name:'Venus',   color:0xE7C79E, radius:0.36, orbit:5.7,  speed:1.5,  fact:'Spins backwards, and its day is longer than its year.' },
+  { name:'Earth',   color:0x4F8FEF, radius:0.38, orbit:7.1,  speed:1.15, fact:'The only known planet with liquid water on its surface.' },
+  { name:'Mars',    color:0xC1541E, radius:0.30, orbit:8.5,  speed:0.9,  fact:'Home to Olympus Mons, the largest volcano in the solar system.' },
+  { name:'Jupiter', color:0xD9A56B, radius:0.95, orbit:11.4, speed:0.55, fact:'So massive its Great Red Spot storm could swallow Earth whole.' },
+  { name:'Saturn',  color:0xE4CE8E, radius:0.82, orbit:14.4, speed:0.42, fact:'Its icy rings span up to 280,000 km but are barely 10m thick.' },
+  { name:'Uranus',  color:0x9FE3E0, radius:0.55, orbit:17.0, speed:0.3,  fact:'Rotates on its side, likely after an ancient massive collision.' },
+  { name:'Neptune', color:0x6C86E8, radius:0.53, orbit:19.4, speed:0.24, fact:'Whipped by the fastest winds ever recorded — over 2,000 km/h.' },
+];
+
+const planets = []; // {mesh, pivot, data, angle, grabbed, dragRadius}
+
+PLANET_DATA.forEach((d, i) => {
+  systemGroup.add(makeOrbitRing(d.orbit));
+
+  const pivot = new THREE.Group();
+  systemGroup.add(pivot);
+
+  const geo = new THREE.SphereGeometry(d.radius, 32, 32);
+  const mat = new THREE.MeshStandardMaterial({ color:d.color, roughness:0.75, metalness:0.05, emissive:new THREE.Color(d.color).multiplyScalar(0.06) });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(d.orbit, 0, 0);
+  pivot.add(mesh);
+
+  // subtle highlight halo (shown when focused)
+  const halo = new THREE.Mesh(
+    new THREE.SphereGeometry(d.radius*1.5, 24, 24),
+    new THREE.MeshBasicMaterial({ color:0xA78BFA, transparent:true, opacity:0, side:THREE.BackSide })
+  );
+  mesh.add(halo);
+
+  if(d.name === 'Saturn'){
+    const ringGeo = new THREE.RingGeometry(d.radius*1.5, d.radius*2.5, 64);
+    const ringMat = new THREE.MeshBasicMaterial({ color:0xCBB98A, side:THREE.DoubleSide, transparent:true, opacity:0.75 });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI/2.4;
+    mesh.add(ring);
+  }
+
+  const angle = Math.random()*Math.PI*2;
+  pivot.rotation.y = angle;
+
+  planets.push({ mesh, pivot, halo, data:d, angle, grabbed:false, orbitRadius:d.orbit, index:i });
+});
+
+/* ============================================================
+   STATE
+============================================================ */
+const state = {
+  handPresent:false,
+  handLostTimer:0,
+  targetRotationY: systemGroup.rotation.y,
+  currentRotationY: systemGroup.rotation.y,
+  targetZoomDist: camDistance,
+  currentZoomDist: camDistance,
+  paused:false,
+  focusIndex:-1,          // -1 = full system view
+  grabbedPlanet:null,
+  pinchAmount:0,
+  mode:'idle',            // idle | rotate | grab | point | fist | palm
+  autoRotate:true,
+  fistCooldown:0,
+  pointCooldown:0,
+  palmCooldown:0,
+  lastGestureKey:null,
+};
+
+const clock = new THREE.Clock();
+const raycaster = new THREE.Raycaster();
+const dragPlane = new THREE.Plane();
+const dragPoint = new THREE.Vector3();
+
+/* ============================================================
+   UI HELPERS
+============================================================ */
+const el = id => document.getElementById(id);
+const statusDot = el('status-dot'), statusText = el('status-text');
+const rRot = el('r-rot'), rZoom = el('r-zoom'), rPinch = el('r-pinch'), rMode = el('r-mode'), rModeRow = el('r-mode-row');
+const focusPanel = el('focus-panel'), fpName = el('fp-name'), fpFact = el('fp-fact');
+const toastEl = el('toast');
+const legendMap = { rotate:'leg-rotate', grab:'leg-pinch', point:'leg-point', fist:'leg-fist', palm:'leg-palm' };
+
+let toastTimer=null;
+function showToast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 1600);
+}
+
+function setLegendActive(modeKey){
+  Object.values(legendMap).forEach(id => el(id).classList.remove('active'));
+  if(legendMap[modeKey]) el(legendMap[modeKey]).classList.add('active');
+}
+
+function showFocusPanel(planetEntry){
+  if(!planetEntry){ focusPanel.classList.remove('show'); return; }
+  fpName.textContent = planetEntry.data.name;
+  fpFact.textContent = planetEntry.data.fact;
+  focusPanel.classList.add('show');
+}
+
+/* ============================================================
+   GESTURE → ACTION LOGIC
+============================================================ */
+function distance2D(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+function countExtendedFingers(lm, wrist){
+  // index, middle, ring, pinky — orientation-invariant via tip-vs-mcp distance from wrist
+  const pairs = [[8,5],[12,9],[16,13],[20,17]];
+  let count = 0;
+  const flags = [];
+  for(const [tip,mcp] of pairs){
+    const dTip = Math.hypot(lm[tip].x-wrist.x, lm[tip].y-wrist.y);
+    const dMcp = Math.hypot(lm[mcp].x-wrist.x, lm[mcp].y-wrist.y);
+    const extended = dTip > dMcp * 1.28;
+    flags.push(extended);
+    if(extended) count++;
+  }
+  return { count, flags }; // flags: [index, middle, ring, pinky]
+}
+
+function handScale(lm){
+  return Math.hypot(lm[0].x-lm[9].x, lm[0].y-lm[9].y) || 0.001;
+}
+
+function cycleFocus(dir){
+  if(planets.length===0) return;
+  state.focusIndex = (state.focusIndex + dir + planets.length) % planets.length;
+  const entry = planets[state.focusIndex];
+  showFocusPanel(entry);
+  showToast(`Focused on ${entry.data.name}`);
+}
+
+function resetView(){
+  state.focusIndex = -1;
+  showFocusPanel(null);
+  state.targetZoomDist = 26;
+  showToast('View reset');
+}
+
+function togglePause(){
+  state.paused = !state.paused;
+  showToast(state.paused ? 'Orbits paused' : 'Orbits resumed');
+}
+
+/* ============================================================
+   MEDIAPIPE HANDS
+============================================================ */
+const videoEl = el('cam-video');
+const overlayCanvas = el('cam-overlay');
+const overlayCtx = overlayCanvas.getContext('2d');
+let handsInstance = null;
+let cameraStream = null;
+let rafId = null;
+let usingMouseFallback = false;
+
+function resizeOverlay(){
+  overlayCanvas.width = overlayCanvas.clientWidth * (window.devicePixelRatio||1);
+  overlayCanvas.height = overlayCanvas.clientHeight * (window.devicePixelRatio||1);
+}
+resizeOverlay();
+
+const HAND_CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],
+  [0,5],[5,6],[6,7],[7,8],
+  [5,9],[9,10],[10,11],[11,12],
+  [9,13],[13,14],[14,15],[15,16],
+  [13,17],[17,18],[18,19],[19,20],
+  [0,17]
+];
+
+function drawHandOverlay(lm){
+  const w = overlayCanvas.width, h = overlayCanvas.height;
+  overlayCtx.clearRect(0,0,w,h);
+  overlayCtx.save();
+  // mirror to match mirrored video
+  overlayCtx.translate(w,0); overlayCtx.scale(-1,1);
+  overlayCtx.strokeStyle = 'rgba(94,234,212,0.85)';
+  overlayCtx.lineWidth = Math.max(1.5, w*0.006);
+  overlayCtx.beginPath();
+  for(const [a,b] of HAND_CONNECTIONS){
+    overlayCtx.moveTo(lm[a].x*w, lm[a].y*h);
+    overlayCtx.lineTo(lm[b].x*w, lm[b].y*h);
+  }
+  overlayCtx.stroke();
+  overlayCtx.fillStyle = '#F2A65A';
+  for(const p of lm){
+    overlayCtx.beginPath();
+    overlayCtx.arc(p.x*w, p.y*h, Math.max(1.8,w*0.009), 0, Math.PI*2);
+    overlayCtx.fill();
+  }
+  overlayCtx.restore();
+}
+
+function updateStatus(live){
+  statusDot.classList.toggle('live', live);
+  statusDot.classList.toggle('lost', !live);
+  statusText.textContent = live ? 'HAND TRACKED' : 'NO HAND';
+}
+
+function onHandsResults(results){
+  const lm = results.multiHandLandmarks && results.multiHandLandmarks[0];
+  if(!lm){
+    state.handPresent = false;
+    overlayCtx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
+    updateStatus(false);
+    return;
+  }
+  state.handPresent = true;
+  updateStatus(true);
+  drawHandOverlay(lm);
+  processGesture(lm);
+}
+
+function processGesture(lm){
+  const wrist = lm[0];
+  const scale = handScale(lm);
+
+  // Pinch amount (thumb tip 4, index tip 8), normalized
+  const pinchDist = distance2D(lm[4], lm[8]) / scale;
+  const pinchAmount = THREE.MathUtils.clamp(1 - (pinchDist/1.1), 0, 1);
+  state.pinchAmount = pinchAmount;
+  rPinch.textContent = Math.round(pinchAmount*100) + '%';
+  const isPinching = pinchDist < 0.42;
+
+  const { count, flags } = countExtendedFingers(lm, wrist);
+  const isFist = count === 0 && !isPinching;
+  const isPoint = count === 1 && flags[0] && !isPinching;
+  const isPalm = count >= 4 && !isPinching;
+
+  // Zoom: wrist vertical position (image y, 0 top .. 1 bottom), inverted (up = zoom in)
+  const zoomT = THREE.MathUtils.clamp(wrist.y, 0.05, 0.95);
+  state.targetZoomDist = THREE.MathUtils.lerp(12, 34, zoomT);
+
+  // Rotation: angle of wrist -> middle_mcp vector (hand tilt / roll)
+  const mcp = lm[9];
+  const angle = Math.atan2(mcp.x - wrist.x, -(mcp.y - wrist.y)); // roughly 0 when hand upright
+  if(!isPinching){
+    state.targetRotationY += 0; // rotation handled as absolute mapping below
+    state.targetRotationY = angle * 1.8;
+  }
+
+  // ---- Priority: pinch/grab > fist > point > palm > passive rotate/zoom ----
+  if(isPinching){
+    state.mode = 'grab';
+    if(!state.grabbedPlanet){
+      // find nearest planet to raycast hit
+      const hit = raycastFromHand(lm[8]);
+      if(hit) state.grabbedPlanet = findNearestPlanet(hit);
+    }
+    if(state.grabbedPlanet){
+      dragPlanetTo(lm[8]);
+    }
+  } else {
+    if(state.grabbedPlanet){
+      releasePlanet(state.grabbedPlanet);
+      state.grabbedPlanet = null;
+    }
+
+    if(isFist){
+      state.mode = 'fist';
+      if(state.fistCooldown<=0){ togglePause(); state.fistCooldown = 0.8; }
+    } else if(isPoint){
+      state.mode = 'point';
+      if(state.pointCooldown<=0){ cycleFocus(1); state.pointCooldown = 0.7; }
+    } else if(isPalm){
+      state.mode = 'palm';
+      if(state.palmCooldown<=0){ resetView(); state.palmCooldown = 0.9; }
+    } else {
+      state.mode = 'rotate';
+    }
+  }
+
+  setLegendActive(state.mode);
+  rMode.textContent = state.mode;
+  rModeRow.classList.toggle('active', state.mode!=='idle');
+}
+
+function raycastFromHand(pt){
+  // pt is normalized [0,1] mirrored-video coords -> convert to NDC (mirror x)
+  const ndcX = (1 - pt.x) * 2 - 1;
+  const ndcY = -(pt.y * 2 - 1);
+  raycaster.setFromCamera({x:ndcX, y:ndcY}, camera);
+  const camDir = new THREE.Vector3();
+  camera.getWorldDirection(camDir);
+  dragPlane.setFromNormalAndCoplanarPoint(camDir, new THREE.Vector3(0,0,0));
+  const target = new THREE.Vector3();
+  if(raycaster.ray.intersectPlane(dragPlane, target)) return target;
+  return null;
+}
+
+function findNearestPlanet(point){
+  let best=null, bestDist=Infinity;
+  for(const p of planets){
+    const wp = new THREE.Vector3();
+    p.mesh.getWorldPosition(wp);
+    const d = wp.distanceTo(point);
+    if(d<bestDist){ bestDist=d; best=p; }
+  }
+  return bestDist < 3.2 ? best : null;
+}
+
+function dragPlanetTo(pt){
+  const world = raycastFromHand(pt);
+  if(!world || !state.grabbedPlanet) return;
+  const p = state.grabbedPlanet;
+  p.grabbed = true;
+  p.halo.material.opacity = 0.35;
+  const local = systemGroup.worldToLocal(world.clone());
+  p.pivot.rotation.y = 0;
+  p.mesh.position.copy(local);
+}
+
+function releasePlanet(p){
+  p.grabbed = false;
+  p.halo.material.opacity = 0;
+  const localPos = p.mesh.position.clone();
+  const r = Math.hypot(localPos.x, localPos.z);
+  p.orbitRadius = THREE.MathUtils.clamp(r, 2.5, 24);
+  p.angle = Math.atan2(localPos.z, localPos.x);
+  p.pivot.rotation.y = p.angle;
+  p.mesh.position.set(p.orbitRadius, localPos.y*0.3, 0);
+}
+
+/* ============================================================
+   CAMERA / HANDS INITIALIZATION
+============================================================ */
+async function initHandTracking(){
+  const loadingLine = el('loading-line');
+  const loadingText = el('loading-text');
+  const errorBox = el('start-error');
+  const fallbackBtn = el('mouse-fallback-btn');
+  loadingLine.style.display = 'flex';
+
+  try{
+    loadingText.textContent = 'Requesting camera access…';
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{ width:640, height:480, facingMode:'user' }, audio:false });
+    cameraStream = stream;
+    videoEl.srcObject = stream;
+    await videoEl.play();
+
+    loadingText.textContent = 'Loading hand-tracking model…';
+    await waitForMediapipe();
+
+    handsInstance = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}` });
+    handsInstance.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.68,
+      minTrackingConfidence: 0.58,
+    });
+    handsInstance.onResults(onHandsResults);
+
+    loadingText.textContent = 'Starting tracking…';
+    await handsInstance.send({ image: videoEl }); // warm-up
+    startDetectionLoop();
+
+    beginExperience();
+  }catch(err){
+    console.error(err);
+    loadingLine.style.display = 'none';
+    errorBox.style.display = 'block';
+    errorBox.textContent = 'Camera or hand-tracking unavailable (' + (err && err.message ? err.message : 'unknown error') + '). You can still explore with your mouse.';
+    fallbackBtn.style.display = 'inline-block';
+  }
+}
+
+function waitForMediapipe(){
+  return new Promise((resolve,reject)=>{
+    const start = performance.now();
+    (function poll(){
+      if(window.Hands) return resolve();
+      if(performance.now()-start > 15000) return reject(new Error('hand-tracking library failed to load'));
+      requestAnimationFrame(poll);
+    })();
+  });
+}
+
+let lastSend = 0;
+function startDetectionLoop(){
+  async function loop(ts){
+    if(!ts) ts = performance.now();
+    if(ts - lastSend > 55){ // ~18fps inference, plenty for gesture control
+      lastSend = ts;
+      try{ await handsInstance.send({ image: videoEl }); }catch(e){ /* ignore transient errors */ }
+    }
+    rafId = requestAnimationFrame(loop);
+  }
+  rafId = requestAnimationFrame(loop);
+}
+
+function stopHandTracking(){
+  if(rafId) cancelAnimationFrame(rafId);
+  if(cameraStream) cameraStream.getTracks().forEach(t=>t.stop());
+}
+
+/* ---------- Mouse fallback ---------- */
+function enableMouseFallback(){
+  usingMouseFallback = true;
+  el('cam-preview').style.display = 'none';
+  el('gesture-readout').style.display = 'none';
+  el('reset-btn').style.display = 'block';
+  updateStatus(false);
+  statusText.textContent = 'MOUSE MODE';
+
+  let dragging=false, lastX=0;
+  renderer.domElement.addEventListener('pointerdown', e=>{ dragging=true; lastX=e.clientX; });
+  window.addEventListener('pointerup', ()=> dragging=false);
+  window.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    const dx = e.clientX-lastX; lastX=e.clientX;
+    state.targetRotationY += dx*0.005;
+  });
+  window.addEventListener('wheel', e=>{
+    state.targetZoomDist = THREE.MathUtils.clamp(state.targetZoomDist + e.deltaY*0.02, 10, 40);
+  }, { passive:true });
+  renderer.domElement.addEventListener('click', ()=> cycleFocus(1));
+
+  beginExperience();
+}
+
+function beginExperience(){
+  el('start-overlay').classList.add('hidden');
+  el('hud').classList.add('visible');
+}
+
+el('start-btn').addEventListener('click', initHandTracking);
+el('mouse-fallback-btn').addEventListener('click', enableMouseFallback);
+el('reset-btn').addEventListener('click', ()=>{ location.reload(); });
+
+/* ============================================================
+   ANIMATION LOOP
+============================================================ */
+function animate(){
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  // cooldown timers
+  state.fistCooldown = Math.max(0, state.fistCooldown-dt);
+  state.pointCooldown = Math.max(0, state.pointCooldown-dt);
+  state.palmCooldown = Math.max(0, state.palmCooldown-dt);
+
+  // idle auto-rotate when no hand present (ambient life)
+  if(!state.handPresent && !usingMouseFallback){
+    state.targetRotationY += dt*0.06;
+  }
+
+  // smooth rotation & zoom
+  state.currentRotationY = THREE.MathUtils.lerp(state.currentRotationY, state.targetRotationY, 1-Math.pow(0.001, dt));
+  systemGroup.rotation.y = state.currentRotationY;
+  state.currentZoomDist = THREE.MathUtils.lerp(state.currentZoomDist, state.targetZoomDist, 1-Math.pow(0.0005, dt));
+
+  rRot.textContent = Math.round(THREE.MathUtils.radToDeg(state.currentRotationY)%360) + '°';
+  rZoom.textContent = state.currentZoomDist.toFixed(1);
+
+  // orbital motion
+  if(!state.paused){
+    for(const p of planets){
+      if(p.grabbed) continue;
+      p.angle += dt * p.data.speed * 0.18;
+      p.pivot.rotation.y = p.angle;
+      p.mesh.rotation.y += dt*0.6;
+    }
+  }
+  sun.rotation.y += dt*0.05;
+
+  // halo pulse for focused planet
+  planets.forEach((p,i)=>{
+    const isFocused = i===state.focusIndex;
+    const target = p.grabbed ? 0.35 : (isFocused ? 0.5 + Math.sin(t*3)*0.15 : 0);
+    p.halo.material.opacity = THREE.MathUtils.lerp(p.halo.material.opacity, target, 0.1);
+  });
+
+  // camera behavior
+  if(state.focusIndex >= 0){
+    const p = planets[state.focusIndex];
+    const wp = new THREE.Vector3();
+    p.mesh.getWorldPosition(wp);
+    const dist = Math.max(p.data.radius*5, 2.2) + p.data.radius*3;
+    const desired = wp.clone().normalize().multiplyScalar(wp.length() + dist);
+    desired.y += p.data.radius*1.4 + 0.6;
+    camera.position.lerp(desired, 0.06);
+    const lookTarget = new THREE.Vector3().lerp(wp, 1);
+    camera.lookAt(wp);
+  } else {
+    const desiredPos = new THREE.Vector3(
+      Math.sin(t*0.02)*state.currentZoomDist*0.15,
+      state.currentZoomDist*0.34,
+      state.currentZoomDist
+    );
+    camera.position.lerp(desiredPos, 0.05);
+    camera.lookAt(0,0,0);
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
+
+window.addEventListener('beforeunload', stopHandTracking);
+</script>
+</body>
+</html>
